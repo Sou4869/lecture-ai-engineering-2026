@@ -5,11 +5,14 @@
 """
 
 import json
+from datetime import datetime, timezone
 from functools import cache
 from pathlib import Path
+from uuid import uuid4
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 MAX_RESULTS = 3
+LEARNING_LOG_DIR = DATA_DIR.parent / "learning_log"
 
 
 @cache
@@ -77,3 +80,30 @@ def get_lecture_summary(lecture: int) -> str:
         available = sorted(p.stem for p in (DATA_DIR / "lectures").glob("*.md"))
         return f"第{lecture}回の要点はまだありません。用意されている回: {', '.join(available)}"
     return path.read_text(encoding="utf-8")
+
+
+def save_learning_log(lecture: int, content: str) -> str:
+    """利用者が学んだ内容を記録してほしいと頼んだときに、学習ログを保存する。
+
+    lecture は1始まりの講義回、content は保存する学習内容。
+    保存前に利用者の承認が必要。単に質問された場合は使わない。
+    保存先とファイル名はプログラムが決め、既存のログは上書きしない。
+    """
+    if lecture < 1:
+        return "保存できません。講義回は1以上の整数を指定してください。"
+    if not content.strip():
+        return "保存できません。学習内容が空です。"
+
+    created_at = datetime.now(timezone.utc)
+    filename = f"{created_at:%Y%m%dT%H%M%S%fZ}_{uuid4().hex}.json"
+    record = {
+        "created_at": created_at.isoformat(),
+        "lecture": lecture,
+        "content": content,
+    }
+    LEARNING_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    path = LEARNING_LOG_DIR / filename
+    with path.open("x", encoding="utf-8") as stream:
+        json.dump(record, stream, ensure_ascii=False, indent=2)
+        stream.write("\n")
+    return f"学習ログを保存しました: {path}"

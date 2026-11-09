@@ -18,7 +18,8 @@ def _parts(result, kind):
 
 
 def test_base_tools_are_registered_and_called():
-    model = TestModel()
+    # 保存ツールの承認待ちは専用テストで検証する。
+    model = TestModel(call_tools=sorted(BASE_TOOLS))
     with agent.override(model=model):
         result = agent.run_sync("LoRAとは？")
 
